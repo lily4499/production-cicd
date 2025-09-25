@@ -28,24 +28,28 @@ pipeline {
             }
         }
 
-        stage('Run SonarQube') {
+       stage('Run SonarQube') {
             environment {
                 scannerHome = tool 'sonar-scan'
             }
             steps {
                 withSonarQubeEnv('MySonar') {
-                    sh """
-                        ${scannerHome}/bin/sonar-scanner \                    
-                        -Dsonar.projectKey=sonar-app-key \
-                        -Dsonar.sources=. \
-                        -Dsonar.language=js \
-                        -Dsonar.tests=__tests__ \
-                        -Dsonar.test.inclusions=__tests__/**/*.test.js \
-                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                    """
+                    sh '''
+                        # Run tests with coverage first
+                        npm test -- --coverage --coverageReporters=lcov
+        
+                        # Run SonarQube analysis
+                        ${scannerHome}/bin/sonar-scanner \
+                          -Dsonar.projectKey=sonar-app-key \
+                          -Dsonar.sources=. \
+                          -Dsonar.tests=__tests__ \
+                          -Dsonar.test.inclusions=__tests__/**/*.test.js \
+                          -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    '''
                 }
             }
         }
+
         stage('Docker Build') {
             steps {
                 sh 'docker build --no-cache -t $DOCKER_IMAGE ./app'
