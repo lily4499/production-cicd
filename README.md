@@ -17,19 +17,23 @@ This project demonstrates a **CI/CD pipeline** for deploying a Node.js app to Ku
 - `Jenkinsfile` → CI/CD pipeline
 
 
-
+```bash
 export GOOGLE_APPLICATION_CREDENTIALS="/home/lilia/DevOps/testtest/terraform-sa.json"
 terraform init
 terraform plan
 terraform apply --auto-approve
-
+```
 
 1. Log in with your GCP user (not the service account Jenkins uses):
+```bash
 gcloud auth login
 gcloud container clusters get-credentials gke-demo --zone us-east4-a --project x-object-472022-q2
+```
 
-2. Apply the RBAC binding once:
+3. Apply the RBAC binding once:
+```bash
 kubectl create clusterrolebinding terraform-admin-binding \
   --clusterrole=cluster-admin \
   --user=terraform-admin@x-object-472022-q2.iam.gserviceaccount.com
+```
 
