@@ -89,6 +89,9 @@ pipeline {
         //     }
         // }
 
+
+
+
         stage('Deploy to Kubernetes') {
             steps {
                 dir('helm-chart') {
@@ -98,14 +101,34 @@ pipeline {
                             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                             gcloud config set project $GCP_PROJECT
                             gcloud container clusters get-credentials $GKE_CLUSTER --zone $GCP_ZONE --project $GCP_PROJECT
+        
                             helm upgrade --install prod-cicd . \
-                              --set image.repository=${DOCKER_IMAGE}
+                              --set image.repository=$DOCKER_IMAGE \
+                              --set image.tag=$IMAGE_TAG
                         """
                     }
                 }
             }
         }
-    }
+
+
+    //     stage('Deploy to Kubernetes') {
+    //         steps {
+    //             dir('helm-chart') {
+    //                 withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+    //                     sh """
+    //                         export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+    //                         gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+    //                         gcloud config set project $GCP_PROJECT
+    //                         gcloud container clusters get-credentials $GKE_CLUSTER --zone $GCP_ZONE --project $GCP_PROJECT
+    //                         helm upgrade --install prod-cicd . \
+    //                           --set image.repository=${DOCKER_IMAGE}
+    //                     """
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
 
     post {
