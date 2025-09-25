@@ -1,0 +1,29 @@
+# Node.js dependencies
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Env files
+.env
+
+# OS / Editor junk
+.DS_Store
+*.swp
+*.tmp
+
+# Docker / Kubernetes build artifacts
+*.pid
+*.seed
+*.bak
+*.tar
+*.tgz
+
+# Ignore IDE/editor configs
+.vscode/
+.idea/
+
+# Coverage / test
+coverage/
