@@ -33,19 +33,21 @@ pipeline {
                 scannerHome = tool 'sonar-scan'
             }
             steps {
-                withSonarQubeEnv('MySonar') {
-                    sh '''
-                        # Run tests with coverage first
-                        npm test -- --coverage --coverageReporters=lcov
+                dir('app') {   // 👈 run commands inside app/
+                    withSonarQubeEnv('MySonar') {
+                        sh '''
+                            # Run tests with coverage inside app/
+                            npm test -- --coverage --coverageReporters=lcov
         
-                        # Run SonarQube analysis
-                        ${scannerHome}/bin/sonar-scanner \
-                          -Dsonar.projectKey=sonar-app-key \
-                          -Dsonar.sources=. \
-                          -Dsonar.tests=__tests__ \
-                          -Dsonar.test.inclusions=__tests__/**/*.test.js \
-                          -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                    '''
+                            # Run SonarQube analysis
+                            ${scannerHome}/bin/sonar-scanner \
+                              -Dsonar.projectKey=sonar-app-key \
+                              -Dsonar.sources=. \
+                              -Dsonar.tests=__tests__ \
+                              -Dsonar.test.inclusions=__tests__/**/*.test.js \
+                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                        '''
+                    }
                 }
             }
         }
