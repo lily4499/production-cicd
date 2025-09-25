@@ -71,8 +71,12 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                sh 'echo $REGISTRY_CREDENTIALS_PSW | docker login -u $REGISTRY_CREDENTIALS_USR --password-stdin'
-                sh 'docker push $DOCKER_IMAGE'
+                sh """
+                    echo $REGISTRY_CREDENTIALS_PSW | docker login -u $REGISTRY_CREDENTIALS_USR --password-stdin
+        
+                    # Push with the correct tag (BUILD_NUMBER)
+                    docker push $DOCKER_IMAGE:$IMAGE_TAG
+                """
             }
         }
 
