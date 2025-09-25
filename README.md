@@ -30,10 +30,12 @@ gcloud auth login
 gcloud container clusters get-credentials gke-demo --zone us-east4-a --project x-object-472022-q2
 ```
 
-3. Apply the RBAC binding once:
+2. Apply the RBAC binding once:
 ```bash
 kubectl create clusterrolebinding terraform-admin-binding \
   --clusterrole=cluster-admin \
   --user=terraform-admin@x-object-472022-q2.iam.gserviceaccount.com
+
 ```
+
 
