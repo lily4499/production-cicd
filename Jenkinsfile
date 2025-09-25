@@ -43,7 +43,9 @@ pipeline {
         }
         stage('Docker Build') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE ./app'
+                sh 'docker build --no-cache -t $DOCKER_IMAGE ./app'
+
+                // sh 'docker build -t $DOCKER_IMAGE ./app'
             }
         }
 
