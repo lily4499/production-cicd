@@ -28,20 +28,19 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Run SonarQube') {
+            environment {
+                scannerHome = tool 'sonar-scan'
+            }
             steps {
-                dir('app') {
-                    withSonarQubeEnv('MySonar') {
-                        sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=sonar-app-key \
-                            -Dsonar.sources=.
-                        """
-                    }
+                withSonarQubeEnv('MySonar') {
+                    sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=sonar-app-key
+                    """
                 }
             }
         }
-
         stage('Docker Build') {
             steps {
                 sh 'docker build -t $DOCKER_IMAGE ./app'
