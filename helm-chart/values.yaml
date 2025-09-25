@@ -2,10 +2,12 @@ replicaCount: 2
 
 image:
   repository: laly9999/prod-cicd-app
-  tag: ""  # leave blank, Jenkins will set this dynamically
+  tag: ""  # Jenkins sets dynamically
   pullPolicy: IfNotPresent
 
 service:
   type: LoadBalancer
   port: 80
+  targetPort: 3000   # 👈 forward to Express app inside container
+
 
