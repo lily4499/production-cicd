@@ -4,9 +4,9 @@ pipeline {
     environment {
         DOCKER_IMAGE         = "laly9999/prod-cicd-app:${BUILD_NUMBER}"
         REGISTRY_CREDENTIALS = credentials('dockerhub-credentials')
-        // KUBECONFIG_CREDENTIALS = credentials('kubeconfig')
         SLACK_WEBHOOK        = credentials('slack-webhook')
 
+        # GCP settings
         GCP_PROJECT  = "x-object-472022-q2"
         GCP_ZONE     = "us-east4-a"
         GKE_CLUSTER  = "gke-demo"
@@ -15,23 +15,30 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                sh 'npm install'
+                dir('app') {
+                    sh 'npm install'
+                }
             }
         }
 
         stage('Test') {
             steps {
-                sh 'npm test'
+                dir('app') {
+                    sh 'npm test'
+                }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('MySonar') {
-                    sh """
-                        ${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=sonar-app-key
-                    """
+                dir('app') {
+                    withSonarQubeEnv('MySonar') {
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=sonar-app-key \
+                            -Dsonar.sources=.
+                        """
+                    }
                 }
             }
         }
@@ -55,17 +62,33 @@ pipeline {
             }
         }
 
+        // stage('Terraform Provisioning (Optional)') {
+        //     when {
+        //         expression { fileExists('terraform/main.tf') }
+        //     }
+        //     steps {
+        //         dir('terraform') {
+        //             sh '''
+        //               terraform init
+        //               terraform apply -auto-approve
+        //             '''
+        //         }
+        //     }
+        // }
+
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-                    sh """
-                        export USE_GKE_GCLOUD_AUTH_PLUGIN=True
-                        gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-                        gcloud config set project $GCP_PROJECT
-                        gcloud container clusters get-credentials $GKE_CLUSTER --zone $GCP_ZONE --project $GCP_PROJECT
-                        helm upgrade --install prod-cicd ./helm-chart \
-                          --set image.repository=${DOCKER_IMAGE}
-                    """
+                dir('helm-chart') {
+                    withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                        sh """
+                            export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+                            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                            gcloud config set project $GCP_PROJECT
+                            gcloud container clusters get-credentials $GKE_CLUSTER --zone $GCP_ZONE --project $GCP_PROJECT
+                            helm upgrade --install prod-cicd . \
+                              --set image.repository=${DOCKER_IMAGE}
+                        """
+                    }
                 }
             }
         }
@@ -83,7 +106,10 @@ pipeline {
         failure {
             echo "Deployment failed ❌ → Rolling back..."
             sh '''
-              export KUBECONFIG=$KUBECONFIG_CREDENTIALS
+              export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+              gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+              gcloud config set project $GCP_PROJECT
+              gcloud container clusters get-credentials $GKE_CLUSTER --zone $GCP_ZONE --project $GCP_PROJECT
               helm rollback prod-cicd 0 || true
             '''
             script {
