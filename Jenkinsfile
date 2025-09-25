@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE         = "laly9999/prod-cicd-app:${BUILD_NUMBER}"
+        DOCKER_IMAGE = "laly9999/prod-cicd-app"
+        IMAGE_TAG    = "${BUILD_NUMBER}"   // 👈 this must be declared here
         REGISTRY_CREDENTIALS = credentials('dockerhub-credentials')
         SLACK_WEBHOOK        = credentials('slack-webhook')
 
