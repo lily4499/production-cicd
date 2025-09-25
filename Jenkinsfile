@@ -35,9 +35,12 @@ pipeline {
             steps {
                 withSonarQubeEnv('MySonar') {
                     sh """
-                        ${scannerHome}/bin/sonar-scanner \
+                        ${scannerHome}/bin/sonar-scanner \                    
                         -Dsonar.projectKey=sonar-app-key \
                         -Dsonar.sources=. \
+                        -Dsonar.language=js \
+                        -Dsonar.tests=__tests__ \
+                        -Dsonar.test.inclusions=__tests__/**/*.test.js \
                         -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
                     """
                 }
