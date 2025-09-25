@@ -2,10 +2,10 @@ replicaCount: 2
 
 image:
   repository: laly9999/prod-cicd-app
-  tag: "latest"
+  tag: ""  # leave blank, Jenkins will set this dynamically
   pullPolicy: IfNotPresent
 
 service:
   type: LoadBalancer
   port: 80
-  targetPort: 3000
+
