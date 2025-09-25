@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../app/app'); // Import just the app (no server started)
+const app = require('../app'); // Import just the app (no server started)
 
 describe('App Routes', () => {
   it('GET / should return Hello Production CI/CD!', async () => {
