@@ -36,7 +36,9 @@ pipeline {
                 withSonarQubeEnv('MySonar') {
                     sh """
                         ${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=sonar-app-key
+                        -Dsonar.projectKey=sonar-app-key \
+                        -Dsonar.sources=. \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
                     """
                 }
             }
