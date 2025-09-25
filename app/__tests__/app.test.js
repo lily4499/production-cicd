@@ -1,16 +1,16 @@
 const request = require('supertest');
-const app = require('../server');
+const app = require('./app'); // Import just the app (no server started)
 
 describe('App Routes', () => {
-  it('should return Hello message on root', async () => {
+  it('GET / should return Hello Production CI/CD!', async () => {
     const res = await request(app).get('/');
-    expect(res.statusCode).toEqual(200);
-    expect(res.text).toContain('Hello Production CI/CD');
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toBe('Hello Production CI/CD!');
   });
 
-  it('should return UP status on /health', async () => {
+  it('GET /health should return status UP', async () => {
     const res = await request(app).get('/health');
-    expect(res.statusCode).toEqual(200);
-    expect(res.body.status).toBe('UP');
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ status: 'UP' });
   });
 });
