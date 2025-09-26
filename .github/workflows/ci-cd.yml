@@ -111,8 +111,8 @@ jobs:
       # ✅ Debug cluster access
       - name: Debug kubectl connectivity
         run: |
-          kubectl version --client=true
-          kubectl cluster-info
+          # kubectl version --client=true
+          # kubectl cluster-info
           kubectl get nodes
     
       # - name: Debug kubectl
