@@ -98,7 +98,11 @@ jobs:
           project_id: x-object-472022-q2
 
       - name: Install gke-gcloud-auth-plugin (pip)
-        run: pip install gke-gcloud-auth-plugin
+        run: |
+          pip install gke-gcloud-auth-plugin
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          which gke-gcloud-auth-plugin || true
+
 
 
       - name: Enable gke-gcloud-auth-plugin   # 👈 tells kubectl/helm to use it
