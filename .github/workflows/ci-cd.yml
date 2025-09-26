@@ -24,14 +24,19 @@ jobs:
         working-directory: app
         run: npm test
 
-  sonarqube:
+    sonarqube:
     runs-on: ubuntu-latest
     needs: build-test
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-node@v3
         with:
           node-version: "18"
+
+      - name: Install Dependencies   # 👈 added this
+        working-directory: app
+        run: npm install
 
       - name: Run Tests with Coverage
         working-directory: app
@@ -50,6 +55,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
 
   docker:
     runs-on: ubuntu-latest
