@@ -5,68 +5,191 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Install Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
 
-    - name: Install & Test
-      run: |
-        cd app
-        npm install
-        npm test
+      - name: Install Dependencies
+        working-directory: app
+        run: npm install
 
-    - name: SonarQube Scan
-      uses: sonarsource/sonarqube-scan-action@v2
-      with:
-        projectBaseDir: ./app
-        args: >
-          -Dsonar.projectKey=prod-cicd-app
-          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+      - name: Run Tests
+        working-directory: app
+        run: npm test
 
-    - name: Build Docker Image
-      run: docker build -t ${{ secrets.DOCKER_USER }}/prod-cicd-app:${{ github.run_number }} ./app
+  sonarqube:
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
 
-    - name: Trivy Image Scan
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ secrets.DOCKER_USER }}/prod-cicd-app:${{ github.run_number }}
-        exit-code: 1
-        severity: HIGH,CRITICAL
+      - name: Run Tests with Coverage
+        working-directory: app
+        run: npm test -- --coverage --coverageReporters=lcov
 
-    - name: Push Docker Image
-      run: |
-        echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
-        docker push ${{ secrets.DOCKER_USER }}/prod-cicd-app:${{ github.run_number }}
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v2
+        with:
+          projectBaseDir: ./app
+          args: >
+            -Dsonar.projectKey=sonar-app-key
+            -Dsonar.sources=.
+            -Dsonar.tests=__tests__
+            -Dsonar.test.inclusions=__tests__/**/*.test.js
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-    - name: Deploy with Helm
-      id: deploy
-      continue-on-error: true
-      run: |
-        helm upgrade --install prod-cicd ./helm-chart \
-          --set image.repository=${{ secrets.DOCKER_USER }}/prod-cicd-app \
-          --set image.tag=${{ github.run_number }}
+  docker:
+    runs-on: ubuntu-latest
+    needs: sonarqube
+    steps:
+      - uses: actions/checkout@v3
 
-    - name: Rollback if Failed
-      if: steps.deploy.outcome == 'failure'
-      run: |
-        echo "Deployment failed ❌ → Rolling back..."
-        helm rollback prod-cicd 0 || true
-        curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"❌ GitHub Actions: Deployment FAILED for prod-cicd-app:${{ github.run_number }}. Rolled back to last stable release."}' \
+      - name: Docker Build
+        run: docker build -t laly9999/prod-cicd-app:${{ github.run_number }} ./app
+
+      - name: Trivy Image Scan
+        uses: aquasecurity/trivy-action@0.12.0
+        with:
+          image-ref: laly9999/prod-cicd-app:${{ github.run_number }}
+          severity: CRITICAL
+          exit-code: "1"
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker Image
+        run: docker push laly9999/prod-cicd-app:${{ github.run_number }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: x-object-472022-q2
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials gke-demo \
+            --zone us-east4-a --project x-object-472022-q2
+
+      - name: Helm Deploy
+        run: |
+          helm upgrade --install prod-cicd ./helm-chart \
+            --set image.repository=laly9999/prod-cicd-app \
+            --set image.tag=${{ github.run_number }}
+
+      - name: Slack Notify Success
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"✅ GitHub Actions: Deployment successful for laly9999/prod-cicd-app:${{ github.run_number }}"}' \
           ${{ secrets.SLACK_WEBHOOK }}
 
-    - name: Slack Success Notification
-      if: steps.deploy.outcome == 'success'
-      run: |
-        curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"✅ GitHub Actions: Deployment successful for prod-cicd-app:${{ github.run_number }}"}' \
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          helm rollback prod-cicd 0 || true
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"❌ GitHub Actions: Deployment FAILED for laly9999/prod-cicd-app:${{ github.run_number }}. Rolled back to last stable release."}' \
           ${{ secrets.SLACK_WEBHOOK }}
+
+
+
+
+# name: CI/CD Pipeline
+
+# on:
+#   push:
+#     branches: [ "main" ]
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - name: Checkout
+#       uses: actions/checkout@v3
+
+#     - name: Install Node.js
+#       uses: actions/setup-node@v3
+#       with:
+#         node-version: '18'
+
+#     - name: Install & Test
+#       run: |
+#         cd app
+#         npm install
+#         npm test
+
+#     - name: SonarQube Scan
+#       uses: sonarsource/sonarqube-scan-action@v2
+#       with:
+#         projectBaseDir: ./app
+#         args: >
+#           -Dsonar.projectKey=prod-cicd-app
+#           -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
+#           -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+#     - name: Build Docker Image
+#       run: docker build -t ${{ secrets.DOCKER_USER }}/prod-cicd-app:${{ github.run_number }} ./app
+
+#     - name: Trivy Image Scan
+#       uses: aquasecurity/trivy-action@master
+#       with:
+#         image-ref: ${{ secrets.DOCKER_USER }}/prod-cicd-app:${{ github.run_number }}
+#         exit-code: 1
+#         severity: HIGH,CRITICAL
+
+#     - name: Push Docker Image
+#       run: |
+#         echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+#         docker push ${{ secrets.DOCKER_USER }}/prod-cicd-app:${{ github.run_number }}
+
+#     - name: Deploy with Helm
+#       id: deploy
+#       continue-on-error: true
+#       run: |
+#         helm upgrade --install prod-cicd ./helm-chart \
+#           --set image.repository=${{ secrets.DOCKER_USER }}/prod-cicd-app \
+#           --set image.tag=${{ github.run_number }}
+
+#     - name: Rollback if Failed
+#       if: steps.deploy.outcome == 'failure'
+#       run: |
+#         echo "Deployment failed ❌ → Rolling back..."
+#         helm rollback prod-cicd 0 || true
+#         curl -X POST -H 'Content-type: application/json' \
+#           --data '{"text":"❌ GitHub Actions: Deployment FAILED for prod-cicd-app:${{ github.run_number }}. Rolled back to last stable release."}' \
+#           ${{ secrets.SLACK_WEBHOOK }}
+
+#     - name: Slack Success Notification
+#       if: steps.deploy.outcome == 'success'
+#       run: |
+#         curl -X POST -H 'Content-type: application/json' \
+#           --data '{"text":"✅ GitHub Actions: Deployment successful for prod-cicd-app:${{ github.run_number }}"}' \
+#           ${{ secrets.SLACK_WEBHOOK }}
