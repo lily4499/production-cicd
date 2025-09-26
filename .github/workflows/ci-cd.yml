@@ -99,15 +99,23 @@ jobs:
 
       - name: Install gke-gcloud-auth-plugin (official apt)
         run: |
+          # Add Google Cloud SDK apt repo
           sudo apt-get update
           sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
-          echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
-          curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo tee /usr/share/keyrings/cloud.google.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
+            sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+          curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+            sudo tee /usr/share/keyrings/cloud.google.gpg > /dev/null
+
+          # Install plugin
           sudo apt-get update
           sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+  
+          # Add plugin to PATH explicitly
           echo "/usr/lib/google-cloud-sdk/bin" >> $GITHUB_PATH
-          which gke-gcloud-auth-plugin
-          gke-gcloud-auth-plugin --version || true
+          which gke-gcloud-auth-plugin || echo "⚠️ still not found"
+          gke-gcloud-auth-plugin --version || echo "⚠️ cannot execute"
+
 
       - name: Enable gke-gcloud-auth-plugin   # 👈 tells kubectl/helm to use it
         run: echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
