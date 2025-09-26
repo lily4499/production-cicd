@@ -100,7 +100,7 @@ jobs:
           #   "tenantId": "xxxx"
           # }
 
-      # ✅ Setup kubectl via AKS credentials
+      # ✅ Setup kubectl via Azure AKS credentials 
       - name: Get AKS Credentials
         run: |
           az aks get-credentials \
