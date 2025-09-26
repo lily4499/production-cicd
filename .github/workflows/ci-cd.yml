@@ -24,7 +24,7 @@ jobs:
         working-directory: app
         run: npm test
 
-  sonarqube:   # 👈 now at the same level as build-test
+  sonarqube:
     runs-on: ubuntu-latest
     needs: build-test
     steps:
@@ -87,46 +87,41 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+      # ✅ Login to Azure
+      - name: Azure Login
+        uses: azure/login@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          # AZURE_CREDENTIALS should contain a JSON service principal, e.g.:
+          # {
+          #   "clientId": "xxxx",
+          #   "clientSecret": "xxxx",
+          #   "subscriptionId": "xxxx",
+          #   "tenantId": "xxxx"
+          # }
 
-      - name: Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: x-object-472022-q2
-
-      - name: Install gke-gcloud-auth-plugin (gcloud component)
+      # ✅ Setup kubectl via AKS credentials
+      - name: Get AKS Credentials
         run: |
-          gcloud components install gke-gcloud-auth-plugin --quiet
-          echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
-          which gke-gcloud-auth-plugin || true
-          gke-gcloud-auth-plugin --version || true
+          az aks get-credentials \
+            --resource-group myResourceGroup \
+            --name myAksCluster \
+            --overwrite-existing
 
-
-      - name: Enable gke-gcloud-auth-plugin   # 👈 tells kubectl/helm to use it
-        run: echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
-
-
-      - name: Get GKE Credentials
+      # ✅ Debug cluster access
+      - name: Debug kubectl
         run: |
-          gcloud container clusters get-credentials gke-demo \
-            --zone us-east4-a --project x-object-472022-q2
+          kubectl version --short
+          kubectl get nodes
 
-
-      - name: Debug kubectl connectivity
-        run: |
-          echo "PATH: $PATH"
-          which gke-gcloud-auth-plugin || echo "❌ plugin missing"
-          kubectl version --short || true
-
+      # ✅ Helm deploy to AKS
       - name: Helm Deploy
         run: |
           helm upgrade --install prod-cicd ./helm-chart \
             --set image.repository=laly9999/prod-cicd-app \
             --set image.tag=${{ github.run_number }}
 
+      # ✅ Slack notifications
       - name: Slack Notify Success
         if: success()
         run: |
@@ -141,3 +136,164 @@ jobs:
           curl -X POST -H 'Content-type: application/json' \
           --data '{"text":"❌ GitHub Actions: Deployment FAILED for laly9999/prod-cicd-app:${{ github.run_number }}. Rolled back to last stable release."}' \
           ${{ secrets.SLACK_WEBHOOK }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# name: CI/CD Pipeline
+
+# on:
+#   push:
+#     branches: [ "main" ]
+
+# jobs:
+#   build-test:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v3
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: "18"
+
+#       - name: Install Dependencies
+#         working-directory: app
+#         run: npm install
+
+#       - name: Run Tests
+#         working-directory: app
+#         run: npm test
+
+#   sonarqube:   # 👈 now at the same level as build-test
+#     runs-on: ubuntu-latest
+#     needs: build-test
+#     steps:
+#       - uses: actions/checkout@v3
+  
+#       - uses: actions/setup-node@v3
+#         with:
+#           node-version: "18"
+  
+#       - name: Install Dependencies
+#         working-directory: app
+#         run: npm install
+  
+#       - name: Run Tests with Coverage
+#         working-directory: app
+#         run: npm test -- --coverage --coverageReporters=lcov
+  
+#       - name: SonarQube Scan
+#         uses: sonarsource/sonarqube-scan-action@v2
+#         with:
+#           projectBaseDir: ./app
+#           args: >
+#             -Dsonar.projectKey=sonar-app-key
+#             -Dsonar.sources=.
+#             -Dsonar.tests=__tests__
+#             -Dsonar.test.inclusions=__tests__/**/*.test.js
+#             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+#         env:
+#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+#   docker:
+#     runs-on: ubuntu-latest
+#     needs: sonarqube
+#     steps:
+#       - uses: actions/checkout@v3
+
+#       - name: Docker Build
+#         run: docker build -t laly9999/prod-cicd-app:${{ github.run_number }} ./app
+
+#       - name: Trivy Image Scan
+#         uses: aquasecurity/trivy-action@0.12.0
+#         with:
+#           image-ref: laly9999/prod-cicd-app:${{ github.run_number }}
+#           severity: CRITICAL
+#           exit-code: "1"
+
+#       - name: Login to DockerHub
+#         uses: docker/login-action@v2
+#         with:
+#           username: ${{ secrets.DOCKER_USER }}
+#           password: ${{ secrets.DOCKER_PASSWORD }}
+
+#       - name: Push Docker Image
+#         run: docker push laly9999/prod-cicd-app:${{ github.run_number }}
+
+#   deploy:
+#     runs-on: ubuntu-latest
+#     needs: docker
+#     steps:
+#       - uses: actions/checkout@v3
+
+#       - name: Authenticate to GCP
+#         uses: google-github-actions/auth@v2
+#         with:
+#           credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+#       - name: Setup gcloud CLI
+#         uses: google-github-actions/setup-gcloud@v2
+#         with:
+#           project_id: x-object-472022-q2
+
+#       - name: Install gke-gcloud-auth-plugin (gcloud component)
+#         run: |
+#           gcloud components install gke-gcloud-auth-plugin --quiet
+#           echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+#           which gke-gcloud-auth-plugin || true
+#           gke-gcloud-auth-plugin --version || true
+
+
+#       - name: Enable gke-gcloud-auth-plugin   # 👈 tells kubectl/helm to use it
+#         run: echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+
+
+#       - name: Get GKE Credentials
+#         run: |
+#           gcloud container clusters get-credentials gke-demo \
+#             --zone us-east4-a --project x-object-472022-q2
+
+
+#       - name: Debug kubectl connectivity
+#         run: |
+#           echo "PATH: $PATH"
+#           which gke-gcloud-auth-plugin || echo "❌ plugin missing"
+#           kubectl version --short || true
+
+#       - name: Helm Deploy
+#         run: |
+#           helm upgrade --install prod-cicd ./helm-chart \
+#             --set image.repository=laly9999/prod-cicd-app \
+#             --set image.tag=${{ github.run_number }}
+
+#       - name: Slack Notify Success
+#         if: success()
+#         run: |
+#           curl -X POST -H 'Content-type: application/json' \
+#           --data '{"text":"✅ GitHub Actions: Deployment successful for laly9999/prod-cicd-app:${{ github.run_number }}"}' \
+#           ${{ secrets.SLACK_WEBHOOK }}
+
+#       - name: Rollback on Failure
+#         if: failure()
+#         run: |
+#           helm rollback prod-cicd 0 || true
+#           curl -X POST -H 'Content-type: application/json' \
+#           --data '{"text":"❌ GitHub Actions: Deployment FAILED for laly9999/prod-cicd-app:${{ github.run_number }}. Rolled back to last stable release."}' \
+#           ${{ secrets.SLACK_WEBHOOK }}
