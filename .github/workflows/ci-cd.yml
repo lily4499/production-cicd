@@ -109,10 +109,16 @@ jobs:
             --overwrite-existing
 
       # ✅ Debug cluster access
-      - name: Debug kubectl
+      - name: Debug kubectl connectivity
         run: |
-          kubectl version --short
+          kubectl version --client=true
+          kubectl cluster-info
           kubectl get nodes
+    
+      # - name: Debug kubectl
+      #   run: |
+      #     kubectl version --short
+      #     kubectl get nodes
 
       # ✅ Helm deploy to AKS
       - name: Helm Deploy
