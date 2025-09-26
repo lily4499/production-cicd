@@ -104,8 +104,8 @@ jobs:
       - name: Get AKS Credentials
         run: |
           az aks get-credentials \
-            --resource-group myResourceGroup \
-            --name myAksCluster \
+            --resource-group aks-rg \
+            --name aks-demo \
             --overwrite-existing
 
       # ✅ Debug cluster access
