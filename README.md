@@ -119,7 +119,64 @@ kubectl get svc
 
 ---
 
+---
 
+
+## 🔑 Steps to Access Slack Webhook URL
+
+### 1. Open Slack App Directory
+
+* Go to 👉 [https://slack.com/apps](https://slack.com/apps)
+* In the search bar, type **Incoming Webhooks**.
+* Click **Add to Slack**.
+
+---
+
+### 2. Choose Your Workspace
+
+* If prompted, select your **workspace** where you want to send messages.
+* You’ll need admin rights (or ask your Slack admin).
+
+---
+
+### 3. Configure Incoming Webhook
+
+* Select the **channel** (e.g., `#devops-project`) where Jenkins should post messages.
+* Click **Allow**.
+* Slack will generate a **Webhook URL**, something like:
+
+```
+https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+---
+
+### 4. Retrieve Existing Webhook (if already created)
+
+* Go to 👉 [https://my.slack.com/apps/manage](https://my.slack.com/apps/manage)
+* Under **Manage Apps**, find **Incoming Webhooks**.
+* There you’ll see all existing webhooks → click one to copy its **Webhook URL**.
+
+---
+
+### 5. Store in Jenkins
+
+* Open Jenkins → **Manage Jenkins → Credentials → Add Credentials**.
+* Choose **Secret Text**, paste the webhook URL.
+* Give it an ID (e.g., `slack-webhook`).
+* Now you can use it in your `Jenkinsfile` like:
+
+```groovy
+withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK')]) {
+    sh """
+      curl -X POST -H 'Content-type: application/json' \
+      --data '{"text":"✅ Jenkins build successful!"}' \
+      $SLACK_WEBHOOK
+    """
+}
+```
+
+---
 
 
 
