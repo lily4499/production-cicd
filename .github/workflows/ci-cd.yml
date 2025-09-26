@@ -97,6 +97,11 @@ jobs:
         with:
           project_id: x-object-472022-q2
 
+      - name: Install gke-gcloud-auth-plugin   # 👈 added this
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials gke-demo \
